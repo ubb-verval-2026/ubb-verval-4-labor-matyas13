@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
+using System.Globalization;
 using FluentAssertions;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
@@ -128,18 +129,19 @@ public class PersonPageTests
         // Assert
         var salaryLabel = wait.Until(ExpectedConditions.ElementExists(By.XPath("//*[@data-test='DisplayedSalary']")));
         var salaryAfterSubmission = double.Parse(salaryLabel.Text);
-        salaryAfterSubmission.Should().BeApproximately(expectedSalary, 0.0001);
+        salaryAfterSubmission.Should().BeApproximately(expectedSalary, 0.00001);
     }
 
-    [Test]
-    public void Person_SalaryIncrease_LessThanMinusTen_ShouldDisplayValidationMessages()
+    [TestCase(-10)]
+    [TestCase(-11)]
+    public void Person_SalaryIncrease_MinusTenOrLess_ShouldDisplayValidationMessages(double increasePercentage)
     {
         // Arrange
         driver.Navigate().GoToUrl(BaseURL);
         driver.FindElement(By.XPath("//*[@data-test='PersonPageNavigation']")).Click();
 
         var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(5));
-        const string validationMessage = "The specified percentag should be between -10 and infinity.";
+        const string validationMessage = "The specified percentage should be greater than -10.";
         wait.Until(ExpectedConditions.ElementExists(By.XPath("//*[@data-test='SalaryIncreasePercentageInput']")));
 
         ((IJavaScriptExecutor)driver).ExecuteScript(
@@ -149,7 +151,7 @@ public class PersonPageTests
             input.dispatchEvent(new Event('change', { bubbles: true }));
             input.dispatchEvent(new Event('blur', { bubbles: true }));
             """,
-            "-11");
+            increasePercentage.ToString(CultureInfo.InvariantCulture));
 
         // Act
         var submitButton = wait.Until(ExpectedConditions.ElementExists(By.XPath("//*[@data-test='SalaryIncreaseSubmitButton']")));
