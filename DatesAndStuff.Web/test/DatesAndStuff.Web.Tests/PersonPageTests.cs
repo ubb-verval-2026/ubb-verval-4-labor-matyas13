@@ -97,18 +97,28 @@ public class PersonPageTests
         Assert.That(verificationErrors.ToString(), Is.EqualTo(""));
     }
 
-    [Test]
-    public void Person_SalaryIncrease_ShouldIncrease()
+    [TestCase(5, 5250)]
+    [TestCase(10, 5500)]
+    [TestCase(2.5, 5125)]
+    public void Person_SalaryIncrease_ShouldIncrease(double increasePercentage, double expectedSalary)
     {
         // Arrange
         driver.Navigate().GoToUrl(BaseURL);
         driver.FindElement(By.XPath("//*[@data-test='PersonPageNavigation']")).Click();
 
         var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(5));
+        var inputSelector = "//*[@data-test='SalaryIncreasePercentageInput']";
 
-        var input = wait.Until(ExpectedConditions.ElementExists(By.XPath("//*[@data-test='SalaryIncreasePercentageInput']")));
-        input.Clear();
-        input.SendKeys("5");
+        wait.Until(ExpectedConditions.ElementExists(By.XPath(inputSelector)));
+        var inputValue = increasePercentage.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        ((IJavaScriptExecutor)driver).ExecuteScript(
+            """
+            const input = document.querySelector("[data-test='SalaryIncreasePercentageInput']");
+            input.value = arguments[0];
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            input.dispatchEvent(new Event('blur', { bubbles: true }));
+            """,
+            inputValue);
 
         // Act
         var submitButton = wait.Until(ExpectedConditions.ElementExists(By.XPath("//*[@data-test='SalaryIncreaseSubmitButton']")));
@@ -118,7 +128,7 @@ public class PersonPageTests
         // Assert
         var salaryLabel = wait.Until(ExpectedConditions.ElementExists(By.XPath("//*[@data-test='DisplayedSalary']")));
         var salaryAfterSubmission = double.Parse(salaryLabel.Text);
-        salaryAfterSubmission.Should().BeApproximately(5250, 0.001);
+        salaryAfterSubmission.Should().BeApproximately(expectedSalary, 0.0001);
     }
     private bool IsElementPresent(By by)
     {
